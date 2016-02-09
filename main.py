@@ -99,13 +99,13 @@ def train(passengers_infos):
 
     # Training
 
-    # cls = sk.linear_model.LogisticRegression(C=1)
+    cls = sk.linear_model.LogisticRegression(C=1)
     # C1 67%, C100 67%, C0.01 50%
 
     # cls = sk.svm.SVC(C=1, probability=True)
     # C1 66%, C100 66%, C0.01 65%
 
-    cls = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None)
+    # cls = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None)
     # 200 75%, 20 74%, 1000 75%
 
     # cls = sk.ensemble.AdaBoostClassifier()
