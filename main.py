@@ -25,7 +25,6 @@ logging.basicConfig(
 CSV_DIRECTORY = "passengers"
 PICKLES_DIRECTORY = "pickles"
 TRAIN_FILE = 'train.csv'
-PASSENGERS = os.listdir('passengers')       # List of driver names ('1', '10', '100', ...)
 
 NB_CPU = 8
 
