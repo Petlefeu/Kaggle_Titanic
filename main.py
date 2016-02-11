@@ -29,7 +29,7 @@ TRAIN_FILE = 'train.csv'
 PERCENT_TRAINING = 80
 
 
-NB_CPU = 8
+# NB_CPU = 8
 
 
 ######################################
