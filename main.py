@@ -26,7 +26,7 @@ CSV_DIRECTORY = "passengers"
 PICKLES_DIRECTORY = "pickles"
 TRAIN_FILE = 'train.csv'
 
-PERCENT_TRAINING = 70
+PERCENT_TRAINING = 80
 
 
 NB_CPU = 8
@@ -63,6 +63,17 @@ def sex_to_int(passengers_infos_sex):
     passengers_infos_sex[passengers_infos_sex == 'female'] = 1
     return passengers_infos_sex
 
+def get_missing_age(passengers_infos_age):
+    """ Cette fonction cree un vecteur
+    age -1 => 1
+    sinon  => 0 """
+    passenger_missing_age = np.zeros(len(passengers_infos_age))
+
+    for var, age in enumerate(passengers_infos_age):
+        if int(age) == -1:
+            passenger_missing_age[var] = 1
+    return passenger_missing_age
+
 def compute_features(passengers_infos):
     """ Cette fonction met en forme les attributs d'un individu pour qu'ils
     soient lisible par le classifier """
@@ -77,10 +88,15 @@ def compute_features(passengers_infos):
     passenger_parch = passengers_infos[:, 8]
     passenger_ticket = passengers_infos[:, 9]
     passenger_fare = passengers_infos[:, 10]
+    passenger_missing_age = get_missing_age(passenger_age)
+
 
     features = [
         passenger_fare,
-        passenger_sex
+        passenger_sex,
+        passenger_missing_age,
+        passenger_pclass,
+        passenger_sibsp
     ]
     return np.array(features).T.astype(float), passengers_survived.astype(int)
 
@@ -99,17 +115,26 @@ def train(passengers_infos):
 
     # Training
 
-    # cls = sk.linear_model.LogisticRegression(C=1)
-    # C1 67%, C100 67%, C0.01 50%
+    # cls = sk.linear_model.LogisticRegression(C=0.01)
+    # C1 69%, C100 70%, C0.01 60%
 
-    # cls = sk.svm.SVC(C=1, probability=True)
-    # C1 66%, C100 66%, C0.01 65%
+    # cls = sk.svm.SVC(C=0.01, probability=True)
+    # C1 66%, C100 67%, C0.01 63%
 
     cls = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None)
-    # 200 75%, 20 74%, 1000 75%
+    # 200 75%, 20 75%, 1000 75%
 
-    # cls = sk.ensemble.AdaBoostClassifier()
+    # cls = sk.ensemble.AdaBoostClassifier(n_estimators=200)
     # 50%
+
+    # cls = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=1.0, max_depth=1, random_state=0)
+    # 100_1_1_0 70%
+
+    # cls = sk.ensemble.GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=1, random_state=0, loss='ls')
+    # 68%
+
+    # cls = sk.neighbors.KNeighborsClassifier(n_neighbors=1)
+    # 7=68% 5=70% 1=75%(plus rapide que RFC)
 
     cls.fit(passengers_features, passengers_survived)
 
@@ -122,6 +147,7 @@ def verify(classifier, passengers_infos):
     passengers_features, passengers_survived = compute_features(passengers_infos)
 
     passengers_survived_prediction = classifier.predict_proba(passengers_features)[:, 1]
+    # passengers_survived_prediction = classifier.predict(passengers_features)
 
     return 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
 
@@ -138,8 +164,8 @@ def verify(classifier, passengers_infos):
 PASSENGERS_INFOS = read_from_pickles()
 
 PROBA = 0
-
-for i in range(5):
+NB_LOOP = 1
+for i in range(NB_LOOP):
     np.random.shuffle(PASSENGERS_INFOS)
     NB_TRAINING_PASSENGERS = len(PASSENGERS_INFOS)*PERCENT_TRAINING/100
     TRAINIG_SAMPLE = PASSENGERS_INFOS[:NB_TRAINING_PASSENGERS]
@@ -147,23 +173,27 @@ for i in range(5):
 
     CLASSIFIER = train(TRAINIG_SAMPLE)
     PROBA += verify(CLASSIFIER, TESTING_SAMPLE)
-    print PROBA/(i+1)
+    print i+1
+
+print PROBA/NB_LOOP
+
+print CLASSIFIER.feature_importances_
 
 #########################################################
 ##           Manual testing / feature creation         ##
 #########################################################
 
-T_HOMMES = []
-T_FEMMES = []
+# T_HOMMES = []
+# T_FEMMES = []
 
-for t in np.linspace(0, 100, num=500):
-    T_HOMMES += [CLASSIFIER.predict_proba([t, 0])[0][1]]
-    T_FEMMES += [CLASSIFIER.predict_proba([t, 1])[0][1]]
+# for t in np.linspace(0, 100, num=500):
+#     T_HOMMES += [CLASSIFIER.predict_proba([t, 0, 1, 3, 0])[0][1]]
+#     T_FEMMES += [CLASSIFIER.predict_proba([t, 1, 1, 3, 0])[0][1]]
 
-plt.figure()
-plt.title('Survived')
-plt.axis([0, 100, 0, 1])
-plt.plot(np.linspace(0, 100, num=500), np.array(T_HOMMES), '.-', color='blue')
-plt.plot(np.linspace(0, 100, num=500), np.array(T_FEMMES), '.-', color='red')
+# plt.figure()
+# plt.title('Survived')
+# plt.axis([0, 100, 0, 1])
+# plt.plot(np.linspace(0, 100, num=500), np.array(T_HOMMES), '.-', color='blue')
+# plt.plot(np.linspace(0, 100, num=500), np.array(T_FEMMES), '.-', color='red')
 
-plt.show()
+# plt.show()
