@@ -1,0 +1,14 @@
+        passenger_sibsp,
+        passenger_parch,
+        0.642458100559
+        sk.neighbors.KNeighborsClassifier(n_neighbors=1)
+
+        passenger_pclass,
+        passenger_sibsp,
+        0.575062866593
+        sk.svm.SVC(C=0.01, probability=True)
+        0.614525139665
+        sk.neighbors.KNeighborsClassifier(n_neighbors=1)
+
+
+        

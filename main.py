@@ -74,12 +74,32 @@ def get_missing_age(passengers_infos_age):
             passenger_missing_age[var] = 1
     return passenger_missing_age
 
+def ticket_to_int(passengers_infos_ticket):
+    """ Cette fonction transforme le ticket en int :
+    float => 1
+    sinon => 0 """
+    passenger_float_ticket = np.zeros(len(passengers_infos_ticket))
+
+    for var, ticket in enumerate(passengers_infos_ticket):
+        try:
+            ticket.astype(float)
+            passenger_float_ticket[var] = 1
+        except:
+            passenger_float_ticket[var] = 0
+    return passenger_float_ticket
+
+def mise_echelle(features):
+    # for var, feature in enumerate(features):
+    #     features[var] = feature.astype(float)/max(feature.astype(float))
+    return np.array(features).T.astype(float)
+
+
 def compute_features(passengers_infos):
     """ Cette fonction met en forme les attributs d'un individu pour qu'ils
     soient lisible par le classifier """
 
     passengers_survived = passengers_infos[:, 1]
-    passenger_id = passengers_infos[:, 0]
+    # passenger_id = passengers_infos[:, 0]
     passenger_pclass = passengers_infos[:, 2]
 
     passenger_sex = sex_to_int(passengers_infos[:, 5])
@@ -89,16 +109,18 @@ def compute_features(passengers_infos):
     passenger_ticket = passengers_infos[:, 9]
     passenger_fare = passengers_infos[:, 10]
     passenger_missing_age = get_missing_age(passenger_age)
-
+    passenger_float_ticket = ticket_to_int(passenger_ticket)
 
     features = [
         passenger_fare,
         passenger_sex,
-        passenger_missing_age,
         passenger_pclass,
-        passenger_sibsp
+        passenger_sibsp,
+        passenger_parch,
+        passenger_missing_age,
+        passenger_float_ticket,
     ]
-    return np.array(features).T.astype(float), passengers_survived.astype(int)
+    return mise_echelle(features), passengers_survived.astype(int)
 
 
 ######################################
@@ -140,6 +162,39 @@ def train(passengers_infos):
 
     return cls
 
+# Trains a classifier for the given driver
+def train_all(passengers_infos):
+    """ Cette fonction entraine tous les classifiers
+    grace aux features de passengers_infos """
+
+    passengers_features, passengers_survived = compute_features(passengers_infos)
+
+    # Training
+
+    cls1 = sk.linear_model.LogisticRegression(C=0.01).fit(passengers_features, passengers_survived)
+    # C1 69%, C100 70%, C0.01 60%
+
+    cls2 = sk.svm.SVC(C=0.01, probability=True).fit(passengers_features, passengers_survived)
+    # C1 66%, C100 67%, C0.01 63%
+
+    cls3 = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None).fit(passengers_features, passengers_survived)
+    # 200 75%, 20 75%, 1000 75%
+
+    cls4 = sk.ensemble.AdaBoostClassifier(n_estimators=200).fit(passengers_features, passengers_survived)
+    # 50%
+
+    cls5 = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=1.0, max_depth=1, random_state=0).fit(passengers_features, passengers_survived)
+    # 100_1_1_0 70%
+
+    # cls6 = sk.ensemble.GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=1, random_state=0, loss='ls').fit(passengers_features, passengers_survived)
+    # 68%
+
+    cls7 = sk.neighbors.KNeighborsClassifier(n_neighbors=1).fit(passengers_features, passengers_survived)
+    # 7=68% 5=70% 1=75%(plus rapide que RFC)
+
+    return cls1, cls2, cls3, cls4, cls5, cls7
+
+
 def verify(classifier, passengers_infos):
     """ Vérification des prédictions d'un classifier
     sur un set de test """
@@ -150,6 +205,16 @@ def verify(classifier, passengers_infos):
     # passengers_survived_prediction = classifier.predict(passengers_features)
 
     return 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
+
+def verify_all(classifiers, passengers_infos):
+    """ Vérification des prédictions des classifiers
+    sur un set de test """
+
+    passengers_features, passengers_survived = compute_features(passengers_infos)
+    for classifier in classifiers:
+        passengers_survived_prediction = classifier.predict_proba(passengers_features)[:, 1]
+        print 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
+
 
 
 #########################################################
@@ -172,8 +237,10 @@ for i in range(NB_LOOP):
     TESTING_SAMPLE = PASSENGERS_INFOS[NB_TRAINING_PASSENGERS:]
 
     CLASSIFIER = train(TRAINIG_SAMPLE)
+    # CLASSIFIERS = train_all(TRAINIG_SAMPLE)
     PROBA += verify(CLASSIFIER, TESTING_SAMPLE)
-    print i+1
+    # verify_all(CLASSIFIERS, TESTING_SAMPLE)
+    # print i+1
 
 print PROBA/NB_LOOP
 
@@ -187,8 +254,8 @@ print CLASSIFIER.feature_importances_
 # T_FEMMES = []
 
 # for t in np.linspace(0, 100, num=500):
-#     T_HOMMES += [CLASSIFIER.predict_proba([t, 0, 1, 3, 0])[0][1]]
-#     T_FEMMES += [CLASSIFIER.predict_proba([t, 1, 1, 3, 0])[0][1]]
+#     T_HOMMES += [CLASSIFIER.predict_proba([t, 0, 1, 1, 1])[0][1]]
+#     T_FEMMES += [CLASSIFIER.predict_proba([t, 1, 1, 1, 1])[0][1]]
 
 # plt.figure()
 # plt.title('Survived')
