@@ -58,6 +58,55 @@ def sex_to_int(passengers_infos_sex):
     passengers_infos_sex[passengers_infos_sex == 'female'] = 1
     return passengers_infos_sex
 
+def embarked_to_int(passengers_infos_embarked):
+    """ Cette fonction transforme le lieu d'embarcation en int :
+    'S' = 0
+    'Q' = 1
+    'C' = 2
+    None = 0 """
+    passengers_infos_embarked[passengers_infos_embarked == 'S'] = 0
+    passengers_infos_embarked[passengers_infos_embarked == 'Q'] = 1
+    passengers_infos_embarked[passengers_infos_embarked == 'C'] = 2
+    passengers_infos_embarked[passengers_infos_embarked == ''] = 0
+    return passengers_infos_embarked
+
+def name_type_to_int(passengers_infos_name):
+    """ Cette fonction transforme les civilites en int :
+    'Mr.', 'Mrs.', 'Mme.', 'Miss.', 'Mlle.', 'Ms.': 0
+    'Col.', 'Capt.', 'Doc.', 'Dr.', 'Rev.', 'Master.', 'Major.', 'Don.', 'Jonkheer.', 'Countess.' : 1 """
+    passenger_info_civilite = np.ones(len(passengers_infos_name))
+    for var, passenger in enumerate(passengers_infos_name):
+        if 'Mr.' in passenger:
+            passenger_info_civilite[var] = 0
+        if 'Mrs.' in passenger:
+            passenger_info_civilite[var] = 0
+        if 'Mme.' in passenger:
+            passenger_info_civilite[var] = 0
+        if 'Miss.' in passenger:
+            passenger_info_civilite[var] = 0
+        if 'Mlle.' in passenger:
+            passenger_info_civilite[var] = 0
+        if 'Ms.' in passenger:
+            passenger_info_civilite[var] = 0
+    return passenger_info_civilite
+
+def fill_missing_age(passengers_infos_age):
+    """ Cette fonction remplasse les ages manquant """
+    passengers_infos_age_complete = np.zeros(len(passengers_infos_age))
+    mean_age = 0
+    nb_age = 0
+    for age in passengers_infos_age:
+        if int(age) != -1:
+            nb_age += 1
+            mean_age += int(age)
+    mean_age = float(mean_age)/nb_age
+    for var, age in enumerate(passengers_infos_age):
+        if int(age) == -1:
+            passengers_infos_age_complete[var] = mean_age
+        else:
+            passengers_infos_age_complete[var] = int(age)
+    return passengers_infos_age_complete
+
 def get_missing_age(passengers_infos_age):
     """ Cette fonction cree un vecteur
     age -1 => 1
@@ -122,13 +171,19 @@ def compute_features(passengers_infos):
     # Non utilisées
     # passenger_id = passengers_infos[:, 0]
     # passenger_float_ticket = ticket_to_int(passenger_ticket)
-    # passenger_ticket = passengers_infos[:, 9]
+    passenger_ticket = passengers_infos[:, 9]
 
     # TODO
     # Prix du billet par personne
-    for i in passengers_infos[:,(2,7,8,10)].astype(float):
-        print i[0], i[3]/(i[1]+i[2]+1)
-    st()
+    # for i in passengers_infos[:,(2,7,8,10)].astype(float):
+    #     print i[0], i[3]/(i[1]+i[2]+1)
+    # st()
+
+    passenger_float_ticket = ticket_to_int(passenger_ticket)
+    passenger_int_embarked = embarked_to_int(passengers_infos[:, 12])
+    passenger_int_civilite = name_type_to_int(passengers_infos[:, 4])
+    passengers_infos_age_complete = fill_missing_age(passenger_age)
+
 
     features = [
         passenger_fare,
@@ -138,6 +193,10 @@ def compute_features(passengers_infos):
         passenger_sibsp,
         passenger_parch,
         passenger_missing_age,
+        passenger_float_ticket,
+        passenger_int_embarked,
+        passenger_int_civilite,
+        passengers_infos_age_complete
     ]
     return np.array(features).T.astype(float), passengers_survived.astype(int)
 
@@ -247,7 +306,7 @@ def verify_all(classifiers, passengers_infos):
 PASSENGERS_INFOS = read_from_pickles()
 
 PROBA = 0
-NB_LOOP = 1
+NB_LOOP = 10
 for i in range(NB_LOOP):
     np.random.shuffle(PASSENGERS_INFOS)
     NB_TRAINING_PASSENGERS = len(PASSENGERS_INFOS)*PERCENT_TRAINING/100
@@ -258,7 +317,7 @@ for i in range(NB_LOOP):
     # CLASSIFIERS = train_all(TRAINIG_SAMPLE)
     PROBA += verify(CLASSIFIER, TESTING_SAMPLE)
     # verify_all(CLASSIFIERS, TESTING_SAMPLE)
-    # print i+1
+    print i+1
 
 print PROBA/NB_LOOP
 
