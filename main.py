@@ -4,12 +4,12 @@
 
 
 import logging
-import os
+# import os
 # import itertools as it
 # from multiprocessing import Process
 import numpy as np
 import sklearn as sk
-import random
+# import random
 from pdb import set_trace as st
 # import scipy as sp
 # from scipy import signal
@@ -28,10 +28,6 @@ TRAIN_FILE = 'train.csv'
 
 PERCENT_TRAINING = 80
 
-
-# NB_CPU = 8
-
-
 ######################################
 ## Pre-loading data into pickles    ##
 ######################################
@@ -43,7 +39,6 @@ def preload_into_pickles():
         "%s/%s" % (CSV_DIRECTORY, TRAIN_FILE),
         skip_header=True,
         delimiter=',',
-        # usecols=(0, 1, 2, 6, 7, 8, 9))
         dtype=[('f0', 'i8'), ('f1', 'i8'), ('f2', 'i8'), ('f3', 'O'), ('f4', 'O'), ('f5', 'O'), ('f6', 'i8'), ('f7', 'i8'), ('f8', 'i8'), ('f9', 'O'), ('f10', 'f8'), ('f11', 'O'), ('f12', 'O')])
     np.save("%s/passengers.npy" % PICKLES_DIRECTORY, np.array(passengers_infos.tolist()))
 
@@ -84,43 +79,67 @@ def ticket_to_int(passengers_infos_ticket):
         try:
             ticket.astype(float)
             passenger_float_ticket[var] = 1
-        except:
+        except ValueError:
             passenger_float_ticket[var] = 0
     return passenger_float_ticket
 
-def mise_echelle(features):
-    # for var, feature in enumerate(features):
-    #     features[var] = feature.astype(float)/max(feature.astype(float))
-    return np.array(features).T.astype(float)
-
+def deck_to_int(passengers_infos_cabin):
+    """ Cette fonction trie par deck, de A à G et T ou O(ther)"""
+    passengers_decks = np.zeros(len(passengers_infos_cabin))
+    for var, cabin in enumerate(passengers_infos_cabin):
+        if 'A' in cabin:
+            passengers_decks[var] = 1
+        if 'B' in cabin:
+            passengers_decks[var] = 2
+        if 'C' in cabin:
+            passengers_decks[var] = 3
+        if 'D' in cabin:
+            passengers_decks[var] = 4
+        if 'E' in cabin:
+            passengers_decks[var] = 5
+        if 'F' in cabin:
+            passengers_decks[var] = 6
+        if 'G' in cabin:
+            passengers_decks[var] = 7
+        if 'T' in cabin:
+            passengers_decks[var] = 8
+    return passengers_decks
 
 def compute_features(passengers_infos):
     """ Cette fonction met en forme les attributs d'un individu pour qu'ils
-    soient lisible par le classifier """
+    soient lisibles par le classifier """
 
     passengers_survived = passengers_infos[:, 1]
-    # passenger_id = passengers_infos[:, 0]
     passenger_pclass = passengers_infos[:, 2]
-
     passenger_sex = sex_to_int(passengers_infos[:, 5])
     passenger_age = passengers_infos[:, 6]
     passenger_sibsp = passengers_infos[:, 7]
     passenger_parch = passengers_infos[:, 8]
-    passenger_ticket = passengers_infos[:, 9]
     passenger_fare = passengers_infos[:, 10]
     passenger_missing_age = get_missing_age(passenger_age)
-    passenger_float_ticket = ticket_to_int(passenger_ticket)
+    passenger_deck = deck_to_int(passengers_infos[:, 11])
+
+    # Non utilisées
+    # passenger_id = passengers_infos[:, 0]
+    # passenger_float_ticket = ticket_to_int(passenger_ticket)
+    # passenger_ticket = passengers_infos[:, 9]
+
+    # TODO
+    # Prix du billet par personne
+    for i in passengers_infos[:,(2,7,8,10)].astype(float):
+        print i[0], i[3]/(i[1]+i[2]+1)
+    st()
 
     features = [
         passenger_fare,
         passenger_sex,
         passenger_pclass,
+        passenger_deck,
         passenger_sibsp,
         passenger_parch,
         passenger_missing_age,
-        passenger_float_ticket,
     ]
-    return mise_echelle(features), passengers_survived.astype(int)
+    return np.array(features).T.astype(float), passengers_survived.astype(int)
 
 
 ######################################
@@ -216,7 +235,6 @@ def verify_all(classifiers, passengers_infos):
         print 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
 
 
-
 #########################################################
 ##              Pre-loading data                       ##
 #########################################################
@@ -254,8 +272,8 @@ print CLASSIFIER.feature_importances_
 # T_FEMMES = []
 
 # for t in np.linspace(0, 100, num=500):
-#     T_HOMMES += [CLASSIFIER.predict_proba([t, 0, 1, 1, 1])[0][1]]
-#     T_FEMMES += [CLASSIFIER.predict_proba([t, 1, 1, 1, 1])[0][1]]
+#     T_HOMMES += [CLASSIFIER.predict_proba([t, 0, 1, 1, 1, 1])[0][1]]
+#     T_FEMMES += [CLASSIFIER.predict_proba([t, 1, 1, 1, 1, 1])[0][1]]
 
 # plt.figure()
 # plt.title('Survived')
