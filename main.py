@@ -118,19 +118,19 @@ def get_missing_age(passengers_infos_age):
             passenger_missing_age[var] = 1
     return passenger_missing_age
 
-def ticket_to_int(passengers_infos_ticket):
-    """ Cette fonction transforme le ticket en int :
-    float => 1
-    sinon => 0 """
-    passenger_float_ticket = np.zeros(len(passengers_infos_ticket))
+# def ticket_to_int(passengers_infos_ticket):
+#     """ Cette fonction transforme le ticket en int :
+#     float => 1
+#     sinon => 0 """
+#     passenger_float_ticket = np.zeros(len(passengers_infos_ticket))
 
-    for var, ticket in enumerate(passengers_infos_ticket):
-        try:
-            ticket.astype(float)
-            passenger_float_ticket[var] = 1
-        except ValueError:
-            passenger_float_ticket[var] = 0
-    return passenger_float_ticket
+#     for var, ticket in enumerate(passengers_infos_ticket):
+#         try:
+#             ticket.astype(float)
+#             passenger_float_ticket[var] = 1
+#         except ValueError:
+#             passenger_float_ticket[var] = 0
+#     return passenger_float_ticket
 
 def deck_to_int(passengers_infos_cabin):
     """ Cette fonction trie par deck, de A à G et T ou O(ther)"""
@@ -154,49 +154,57 @@ def deck_to_int(passengers_infos_cabin):
             passengers_decks[var] = 8
     return passengers_decks
 
+def fare_per_person(passengers_infos):
+    """ Cette fonction divise le prix du billet par le nombre
+    de membre de la famille. En cas de 0 :
+    Classe 1 : 30£
+    Classe 2 : 12£
+    Classe 3 : 5£ (3£ à 8£) """
+    passengers_fare_alone = np.zeros(len(passengers_infos))
+    for var, fare in enumerate(passengers_infos[:, (0, 2, 7, 8, 10)].astype(float)):
+        fare_alone = fare[4]/(fare[2]+fare[3]+1)
+        if fare_alone == 0 and fare[1] == 1:
+            fare_alone = 30
+        elif fare_alone == 0 and fare[1] == 2:
+            fare_alone = 12
+        elif fare_alone == 0 and fare[1] == 3:
+            fare_alone = 5
+        passengers_fare_alone[var] = fare_alone
+    return passengers_fare_alone
+
+
 def compute_features(passengers_infos):
     """ Cette fonction met en forme les attributs d'un individu pour qu'ils
     soient lisibles par le classifier """
 
     passengers_survived = passengers_infos[:, 1]
-    passenger_pclass = passengers_infos[:, 2]
-    passenger_sex = sex_to_int(passengers_infos[:, 5])
-    passenger_age = passengers_infos[:, 6]
-    passenger_sibsp = passengers_infos[:, 7]
-    passenger_parch = passengers_infos[:, 8]
-    passenger_fare = passengers_infos[:, 10]
-    passenger_missing_age = get_missing_age(passenger_age)
-    passenger_deck = deck_to_int(passengers_infos[:, 11])
+
+    passengers_pclass = passengers_infos[:, 2]
+    passengers_sibsp = passengers_infos[:, 7]
+    passengers_parch = passengers_infos[:, 8]
+    passengers_sex = sex_to_int(passengers_infos[:, 5])
+    passengers_deck = deck_to_int(passengers_infos[:, 11])
+    passengers_int_embarked = embarked_to_int(passengers_infos[:, 12])
+    passengers_int_civilite = name_type_to_int(passengers_infos[:, 4])
+    passengers_infos_age_complete = fill_missing_age(passengers_infos[:, 6])
+    passengers_fare_alone = fare_per_person(passengers_infos)
 
     # Non utilisées
     # passenger_id = passengers_infos[:, 0]
-    # passenger_float_ticket = ticket_to_int(passenger_ticket)
-    passenger_ticket = passengers_infos[:, 9]
-
-    # TODO
-    # Prix du billet par personne
-    # for i in passengers_infos[:,(2,7,8,10)].astype(float):
-    #     print i[0], i[3]/(i[1]+i[2]+1)
-    # st()
-
-    passenger_float_ticket = ticket_to_int(passenger_ticket)
-    passenger_int_embarked = embarked_to_int(passengers_infos[:, 12])
-    passenger_int_civilite = name_type_to_int(passengers_infos[:, 4])
-    passengers_infos_age_complete = fill_missing_age(passenger_age)
-
+    # passengers_fare = passengers_infos[:, 10]
+    # passengers_ticket = passengers_infos[:, 9]
+    # passengers_float_ticket = ticket_to_int(passengers_ticket)
 
     features = [
-        passenger_fare,
-        passenger_sex,
-        passenger_pclass,
-        passenger_deck,
-        passenger_sibsp,
-        passenger_parch,
-        passenger_missing_age,
-        passenger_float_ticket,
-        passenger_int_embarked,
-        passenger_int_civilite,
-        passengers_infos_age_complete
+        passengers_fare_alone,
+        passengers_sex,
+        passengers_infos_age_complete,
+        passengers_pclass,
+        passengers_sibsp,
+        passengers_deck,
+        passengers_int_civilite,
+        passengers_int_embarked,
+        passengers_parch,
     ]
     return np.array(features).T.astype(float), passengers_survived.astype(int)
 
@@ -227,8 +235,8 @@ def train(passengers_infos):
     # cls = sk.ensemble.AdaBoostClassifier(n_estimators=200)
     # 50%
 
-    # cls = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=1.0, max_depth=1, random_state=0)
-    # 100_1_1_0 70%
+    # cls = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=1, max_depth=1, random_state=0)
+    # 100_1_1_0 75%
 
     # cls = sk.ensemble.GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=1, random_state=0, loss='ls')
     # 68%
@@ -306,7 +314,7 @@ def verify_all(classifiers, passengers_infos):
 PASSENGERS_INFOS = read_from_pickles()
 
 PROBA = 0
-NB_LOOP = 10
+NB_LOOP = 1
 for i in range(NB_LOOP):
     np.random.shuffle(PASSENGERS_INFOS)
     NB_TRAINING_PASSENGERS = len(PASSENGERS_INFOS)*PERCENT_TRAINING/100
@@ -321,23 +329,24 @@ for i in range(NB_LOOP):
 
 print PROBA/NB_LOOP
 
+print CLASSIFIER.feature_importances_*len(CLASSIFIER.feature_importances_)
 print CLASSIFIER.feature_importances_
 
 #########################################################
 ##           Manual testing / feature creation         ##
 #########################################################
 
-# T_HOMMES = []
-# T_FEMMES = []
+T_HOMMES = []
+T_FEMMES = []
 
-# for t in np.linspace(0, 100, num=500):
-#     T_HOMMES += [CLASSIFIER.predict_proba([t, 0, 1, 1, 1, 1])[0][1]]
-#     T_FEMMES += [CLASSIFIER.predict_proba([t, 1, 1, 1, 1, 1])[0][1]]
+for t in np.linspace(0, 100, num=500):
+    T_HOMMES += [CLASSIFIER.predict_proba([t, 0, 1, 1, 1, 1, 1, 1, 1])[0][1]]
+    T_FEMMES += [CLASSIFIER.predict_proba([t, 1, 1, 1, 1, 1, 1, 1, 1])[0][1]]
 
-# plt.figure()
-# plt.title('Survived')
-# plt.axis([0, 100, 0, 1])
-# plt.plot(np.linspace(0, 100, num=500), np.array(T_HOMMES), '.-', color='blue')
-# plt.plot(np.linspace(0, 100, num=500), np.array(T_FEMMES), '.-', color='red')
+plt.figure()
+plt.title('Survived')
+plt.axis([0, 100, 0, 1])
+plt.plot(np.linspace(0, 100, num=500), np.array(T_HOMMES), '.-', color='blue')
+plt.plot(np.linspace(0, 100, num=500), np.array(T_FEMMES), '.-', color='red')
 
-# plt.show()
+plt.show()
