@@ -118,20 +118,6 @@ def get_missing_age(passengers_infos_age):
             passenger_missing_age[var] = 1
     return passenger_missing_age
 
-# def ticket_to_int(passengers_infos_ticket):
-#     """ Cette fonction transforme le ticket en int :
-#     float => 1
-#     sinon => 0 """
-#     passenger_float_ticket = np.zeros(len(passengers_infos_ticket))
-
-#     for var, ticket in enumerate(passengers_infos_ticket):
-#         try:
-#             ticket.astype(float)
-#             passenger_float_ticket[var] = 1
-#         except ValueError:
-#             passenger_float_ticket[var] = 0
-#     return passenger_float_ticket
-
 def deck_to_int(passengers_infos_cabin):
     """ Cette fonction trie par deck, de A à G et T ou O(ther)"""
     passengers_decks = np.zeros(len(passengers_infos_cabin))
@@ -189,12 +175,6 @@ def compute_features(passengers_infos):
     passengers_infos_age_complete = fill_missing_age(passengers_infos[:, 6])
     passengers_fare_alone = fare_per_person(passengers_infos)
 
-    # Non utilisées
-    # passenger_id = passengers_infos[:, 0]
-    # passengers_fare = passengers_infos[:, 10]
-    # passengers_ticket = passengers_infos[:, 9]
-    # passengers_float_ticket = ticket_to_int(passengers_ticket)
-
     features = [
         passengers_fare_alone,
         passengers_sex,
@@ -229,14 +209,14 @@ def train(passengers_infos):
     # cls = sk.svm.SVC(C=0.01, probability=True)
     # C1 66%, C100 67%, C0.01 63%
 
-    cls = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None)
+    # cls = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None)
     # 200 75%, 20 75%, 1000 75%
 
     # cls = sk.ensemble.AdaBoostClassifier(n_estimators=200)
     # 50%
 
-    # cls = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=1, max_depth=1, random_state=0)
-    # 100_1_1_0 75%
+    cls = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=0.9, max_depth=10, random_state=0)
+    # 100_1_1_0 74% (0.01) 100_.9_10_0 77% (0.02)
 
     # cls = sk.ensemble.GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=1, random_state=0, loss='ls')
     # 68%
@@ -269,7 +249,7 @@ def train_all(passengers_infos):
     cls4 = sk.ensemble.AdaBoostClassifier(n_estimators=200).fit(passengers_features, passengers_survived)
     # 50%
 
-    cls5 = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=1.0, max_depth=1, random_state=0).fit(passengers_features, passengers_survived)
+    cls5 = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=0.9, max_depth=10, random_state=0).fit(passengers_features, passengers_survived)
     # 100_1_1_0 70%
 
     # cls6 = sk.ensemble.GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=1, random_state=0, loss='ls').fit(passengers_features, passengers_survived)
@@ -301,10 +281,10 @@ def verify_all(classifiers, passengers_infos):
     sur un set de test """
 
     passengers_features, passengers_survived = compute_features(passengers_infos)
-    for classifier in classifiers:
+    for var, classifier in enumerate(classifiers):
         passengers_survived_prediction = classifier.predict_proba(passengers_features)[:, 1]
-        print 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
-
+        proba = 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
+        print proba
 
 #########################################################
 ##              Pre-loading data                       ##
@@ -325,16 +305,14 @@ for i in range(NB_LOOP):
     TRAINIG_SAMPLE = PASSENGERS_INFOS[:NB_TRAINING_PASSENGERS]
     TESTING_SAMPLE = PASSENGERS_INFOS[NB_TRAINING_PASSENGERS:]
 
-    CLASSIFIER = train(TRAINIG_SAMPLE)
-    # CLASSIFIERS = train_all(TRAINIG_SAMPLE)
-    PROBA += [verify(CLASSIFIER, TESTING_SAMPLE)]
-    # verify_all(CLASSIFIERS, TESTING_SAMPLE)
+    # CLASSIFIER = train(TRAINIG_SAMPLE)
+    # PROBA += [verify(CLASSIFIER, TESTING_SAMPLE)]
+    CLASSIFIERS = train_all(TRAINIG_SAMPLE)
+    verify_all(CLASSIFIERS, TESTING_SAMPLE)
     print '%s/%s' % (i+1, NB_LOOP)
 
-print "MOYENNE : %s" % (sum(PROBA)/len(PROBA))
-print "STD : %s" % np.std(PROBA)
-
-
+# print "MOYENNE : %s" % (sum(PROBA)/len(PROBA))
+# print "STD : %s" % np.std(PROBA)
 # print CLASSIFIER.feature_importances_
 
 #########################################################
