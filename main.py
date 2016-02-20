@@ -297,6 +297,10 @@ def verify(classifier, passengers_infos):
     passengers_survived_prediction = classifier.predict_proba(passengers_features)[:, 1]
     # passengers_survived_prediction = classifier.predict(passengers_features)
 
+    # for var, passenger in enumerate(passengers_infos):
+    #     distance = np.linalg.norm(passengers_survived[var] - passengers_survived_prediction[var])
+    #     print '%s %s' % (passenger[0], distance)
+
     return 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
 
 def verify_all(classifiers, passengers_infos):
@@ -320,8 +324,8 @@ def verify_all(classifiers, passengers_infos):
 
 PASSENGERS_INFOS = read_from_pickles()
 
-PROBA = 0
-NB_LOOP = 10
+PROBA = []
+NB_LOOP = 1
 for i in range(NB_LOOP):
     np.random.shuffle(PASSENGERS_INFOS)
     NB_TRAINING_PASSENGERS = len(PASSENGERS_INFOS)*PERCENT_TRAINING/100
@@ -330,14 +334,15 @@ for i in range(NB_LOOP):
 
     CLASSIFIER = train(TRAINIG_SAMPLE)
     # CLASSIFIERS = train_all(TRAINIG_SAMPLE)
-    PROBA += verify(CLASSIFIER, TESTING_SAMPLE)
+    PROBA += [verify(CLASSIFIER, TESTING_SAMPLE)]
     # verify_all(CLASSIFIERS, TESTING_SAMPLE)
-    print i+1
+    print '%s/%s' % (i+1, NB_LOOP)
 
-print PROBA/NB_LOOP
+print "MOYENNE : %s" % (sum(PROBA)/len(PROBA))
+print "STD : %s" % np.std(PROBA)
 
-print CLASSIFIER.feature_importances_*len(CLASSIFIER.feature_importances_)
-print CLASSIFIER.feature_importances_
+
+# print CLASSIFIER.feature_importances_
 
 #########################################################
 ##           Manual testing / feature creation         ##
