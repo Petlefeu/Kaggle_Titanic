@@ -39,7 +39,7 @@ def preload_into_pickles():
         "%s/%s" % (CSV_DIRECTORY, TRAIN_FILE),
         skip_header=True,
         delimiter=',',
-        dtype=[('f0', 'i8'), ('f1', 'i8'), ('f2', 'i8'), ('f3', 'O'), ('f4', 'O'), ('f5', 'O'), ('f6', 'i8'), ('f7', 'i8'), ('f8', 'i8'), ('f9', 'O'), ('f10', 'f8'), ('f11', 'O'), ('f12', 'O')])
+        dtype=[('f0', 'i8'), ('f1', 'i8'), ('f2', 'i8'), ('f3', 'O'), ('f4', 'O'), ('f5', 'O'), ('f6', 'f8'), ('f7', 'i8'), ('f8', 'i8'), ('f9', 'O'), ('f10', 'f8'), ('f11', 'O'), ('f12', 'O')])
     np.save("%s/passengers.npy" % PICKLES_DIRECTORY, np.array(passengers_infos.tolist()))
 
 def read_from_pickles():
@@ -90,21 +90,26 @@ def name_type_to_int(passengers_infos_name):
             passenger_info_civilite[var] = 0
     return passenger_info_civilite
 
-def fill_missing_age(passengers_infos_age):
+def fill_missing_age_mean(passengers_infos_age):
     """ Cette fonction remplasse les ages manquant """
+    mean_age = np.nanmean(passengers_infos_age)
     passengers_infos_age_complete = np.zeros(len(passengers_infos_age))
-    mean_age = 0
-    nb_age = 0
-    for age in passengers_infos_age:
-        if int(age) != -1:
-            nb_age += 1
-            mean_age += int(age)
-    mean_age = float(mean_age)/nb_age
     for var, age in enumerate(passengers_infos_age):
-        if int(age) == -1:
+        if np.isnan(age):
             passengers_infos_age_complete[var] = mean_age
         else:
-            passengers_infos_age_complete[var] = int(age)
+            passengers_infos_age_complete[var] = age
+    return passengers_infos_age_complete
+
+def fill_missing_age_median(passengers_infos_age):
+    """ Cette fonction remplasse les ages manquant """
+    median_age = np.nanmedian(passengers_infos_age)
+    passengers_infos_age_complete = np.zeros(len(passengers_infos_age))
+    for var, age in enumerate(passengers_infos_age):
+        if np.isnan(age):
+            passengers_infos_age_complete[var] = median_age
+        else:
+            passengers_infos_age_complete[var] = age
     return passengers_infos_age_complete
 
 def get_missing_age(passengers_infos_age):
@@ -172,13 +177,15 @@ def compute_features(passengers_infos):
     passengers_deck = deck_to_int(passengers_infos[:, 11])
     passengers_int_embarked = embarked_to_int(passengers_infos[:, 12])
     passengers_int_civilite = name_type_to_int(passengers_infos[:, 4])
-    passengers_infos_age_complete = fill_missing_age(passengers_infos[:, 6])
+    passengers_infos_age_complete_mean = fill_missing_age_mean(passengers_infos[:, 6].astype(float))
+    passengers_infos_age_complete_median = fill_missing_age_median(passengers_infos[:, 6].astype(float))
     passengers_fare_alone = fare_per_person(passengers_infos)
 
     features = [
         passengers_fare_alone,
         passengers_sex,
-        passengers_infos_age_complete,
+        passengers_infos_age_complete_mean,
+        passengers_infos_age_complete_median,
         passengers_pclass,
         passengers_sibsp,
         passengers_deck,
