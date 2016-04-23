@@ -244,16 +244,16 @@ def train_all(passengers_infos):
 
     # Training
 
-    cls1 = sk.linear_model.LogisticRegression(C=0.01).fit(passengers_features, passengers_survived)
+    # cls1 = sk.linear_model.LogisticRegression(C=0.01).fit(passengers_features, passengers_survived)
     # C1 69%, C100 70%, C0.01 60%
 
-    cls2 = sk.svm.SVC(C=0.01, probability=True).fit(passengers_features, passengers_survived)
+    # cls2 = sk.svm.SVC(C=0.01, probability=True).fit(passengers_features, passengers_survived)
     # C1 66%, C100 67%, C0.01 63%
 
     cls3 = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None).fit(passengers_features, passengers_survived)
     # 200 75%, 20 75%, 1000 75%
 
-    cls4 = sk.ensemble.AdaBoostClassifier(n_estimators=200).fit(passengers_features, passengers_survived)
+    # cls4 = sk.ensemble.AdaBoostClassifier(n_estimators=200).fit(passengers_features, passengers_survived)
     # 50%
 
     cls5 = sk.ensemble.GradientBoostingClassifier(n_estimators=100, learning_rate=0.9, max_depth=10, random_state=0).fit(passengers_features, passengers_survived)
@@ -265,7 +265,7 @@ def train_all(passengers_infos):
     cls7 = sk.neighbors.KNeighborsClassifier(n_neighbors=1).fit(passengers_features, passengers_survived)
     # 7=68% 5=70% 1=75%(plus rapide que RFC)
 
-    return cls1, cls2, cls3, cls4, cls5, cls7
+    return cls3, cls5, cls7
 
 
 def verify(classifier, passengers_infos):
@@ -288,10 +288,36 @@ def verify_all(classifiers, passengers_infos):
     sur un set de test """
 
     passengers_features, passengers_survived = compute_features(passengers_infos)
-    for var, classifier in enumerate(classifiers):
+    for classifier in classifiers:
         passengers_survived_prediction = classifier.predict_proba(passengers_features)[:, 1]
-        proba = 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
-        print proba
+        print - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
+
+def meta_classifier(classifiers, training_sample, testing_sample):
+    """ TODO """
+    # Récupération des infos
+    passengers_features, passengers_survived = compute_features(training_sample)
+
+    # Training
+    new_training_sample = []
+    for passenger_feature in passengers_features:
+        features = []
+        for cls in classifiers:
+            features += [cls.predict_proba(passenger_feature)[0][0]]
+        new_training_sample += [np.array(features)]
+    meta_cls = sk.ensemble.RandomForestClassifier(n_estimators=200, max_features=None).fit(new_training_sample, passengers_survived)
+
+    # Testing
+    passengers_features, passengers_survived = compute_features(testing_sample)
+    new_training_sample = []
+    for passenger_feature in passengers_features:
+        features = []
+        for cls in classifiers:
+            features += [cls.predict_proba(passenger_feature)[0][0]]
+        new_training_sample += [np.array(features)]
+
+    passengers_survived_prediction = meta_cls.predict_proba(new_training_sample)[:, 1]
+    return 1 - np.sum(abs(passengers_survived.astype(int) - passengers_survived_prediction.astype(float)))/len(passengers_survived)
+
 
 #########################################################
 ##              Pre-loading data                       ##
@@ -305,21 +331,22 @@ def verify_all(classifiers, passengers_infos):
 PASSENGERS_INFOS = read_from_pickles()
 
 PROBA = []
-NB_LOOP = 1
+NB_LOOP = 10
 for i in range(NB_LOOP):
     np.random.shuffle(PASSENGERS_INFOS)
     NB_TRAINING_PASSENGERS = len(PASSENGERS_INFOS)*PERCENT_TRAINING/100
     TRAINIG_SAMPLE = PASSENGERS_INFOS[:NB_TRAINING_PASSENGERS]
     TESTING_SAMPLE = PASSENGERS_INFOS[NB_TRAINING_PASSENGERS:]
 
-    # CLASSIFIER = train(TRAINIG_SAMPLE)
-    # PROBA += [verify(CLASSIFIER, TESTING_SAMPLE)]
-    CLASSIFIERS = train_all(TRAINIG_SAMPLE)
-    verify_all(CLASSIFIERS, TESTING_SAMPLE)
+    CLASSIFIER = train(TRAINIG_SAMPLE)
+    PROBA += [verify(CLASSIFIER, TESTING_SAMPLE)]
+    # CLASSIFIERS = train_all(TRAINIG_SAMPLE)
+    # PROBA += [meta_classifier(CLASSIFIERS, TRAINIG_SAMPLE, TESTING_SAMPLE)]
+    # verify_all(CLASSIFIERS, TESTING_SAMPLE)
     print '%s/%s' % (i+1, NB_LOOP)
 
-# print "MOYENNE : %s" % (sum(PROBA)/len(PROBA))
-# print "STD : %s" % np.std(PROBA)
+print "MOYENNE : %s" % (sum(PROBA)/len(PROBA))
+print "STD : %s" % np.std(PROBA)
 # print CLASSIFIER.feature_importances_
 
 #########################################################
